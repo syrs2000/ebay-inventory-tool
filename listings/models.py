@@ -29,7 +29,9 @@ class Listing(models.Model):
     ]
 
     # --- eBay 基本情報 ---
-    item_id = models.CharField("ItemID", max_length=32, unique=True, db_index=True)
+    item_id = models.CharField(
+        "ItemID", max_length=32, unique=True, db_index=True, null=True, blank=True
+    )
     url = models.URLField("URL", max_length=500, blank=True)
     sku = models.CharField("SKU", max_length=100, blank=True, db_index=True)
     custom_label = models.CharField("カスタムラベル", max_length=100, blank=True)
@@ -63,6 +65,14 @@ class Listing(models.Model):
     brand = models.CharField("Brand", max_length=200, blank=True)
     upc = models.CharField("UPC", max_length=64, blank=True)
     mpn = models.CharField("MPN", max_length=64, blank=True)
+
+    # --- ビジネスポリシー (eBayアカウントから取得したPayment/Shipping/Returnポリシー) ---
+    payment_profile_id = models.CharField("Payment Policy ID", max_length=32, blank=True)
+    payment_profile_name = models.CharField("Payment Policy名", max_length=200, blank=True)
+    shipping_profile_id = models.CharField("Shipping Policy ID", max_length=32, blank=True)
+    shipping_profile_name = models.CharField("Shipping Policy名", max_length=200, blank=True)
+    return_profile_id = models.CharField("Return Policy ID", max_length=32, blank=True)
+    return_profile_name = models.CharField("Return Policy名", max_length=200, blank=True)
 
     # --- Item Specifics: [{"name": "...", "value": "..."}] ---
     item_specifics = models.JSONField("Item Specifics", default=list, blank=True)

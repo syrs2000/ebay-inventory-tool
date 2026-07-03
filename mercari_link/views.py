@@ -9,6 +9,7 @@ from django.shortcuts import redirect, render
 from listings.models import Listing
 from .forms import MercariCSVImportForm
 from .models import MercariLink, StockCheckLog
+from .services.mercari_checker import extract_mercari_id
 
 CSV_HEADERS = ["ItemID", "SKU", "mercari_url", "mercari_sku", "auto_delist_enabled"]
 
@@ -72,7 +73,7 @@ def import_csv(request):
                 item_id = (row.get("ItemID") or "").strip()
                 sku = (row.get("SKU") or "").strip()
                 mercari_url = (row.get("mercari_url") or "").strip()
-                mercari_sku = (row.get("mercari_sku") or "").strip()
+                mercari_sku = extract_mercari_id(mercari_url) or (row.get("mercari_sku") or "").strip()
                 auto_delist_raw = (row.get("auto_delist_enabled") or "1").strip()
                 auto_delist = auto_delist_raw in TRUE_VALUES
 

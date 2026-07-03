@@ -5,6 +5,17 @@
 <div class="toolbar">
   <strong>ItemID:</strong> {{ listing.item_id|default:"(未出品)" }}
   <a class="btn btn-gray" href="{% url 'listings:list' %}">一覧へ戻る</a>
+  {% if listing.pk %}
+  <button type="button" class="btn btn-blue"
+          onclick="window.open('{% url 'listings:preview' listing.pk %}', 'preview_{{ listing.pk }}', 'width=900,height=800,resizable=yes,scrollbars=yes')">
+    プレビューを別ウィンドウで表示
+  </button>
+  {% endif %}
+</div>
+
+<div class="panel" style="border:2px solid #ccc; background:#fff;">
+  <div class="panel-title">プレビュー (保存済み内容 / eBay出品イメージ)</div>
+  {% include "listings/_preview_content.html" %}
 </div>
 
 <form method="post">
@@ -25,18 +36,29 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title">画像URL (最大10枚)</div>
-    <table class="images-table">
-      <tr>
-        {% for url in image_slots %}
-        <td>
-          <input type="url" name="image_url"
-                 value="{{ url }}"
-                 placeholder="画像URL {{ forloop.counter }}">
-        </td>
-        {% endfor %}
-      </tr>
-    </table>
+    <div class="panel-title">
+      画像URL (最大10枚)
+      {% if listing.pk %}
+      <button type="button" class="btn btn-blue" id="mercari-image-btn" style="font-size:12px;" onclick="fetchMercariImages()">
+        メルカリから画像取得
+      </button>
+      <span id="mercari-image-status" style="font-size:12px;color:#777;">(上のメルカリURL欄の内容を使って取得します。保存前でもOK)</span>
+      {% endif %}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      {% for url in image_slots %}
+      <div style="width:110px;">
+        <input type="url" name="image_url" class="image-url-input"
+               value="{{ url }}"
+               placeholder="画像URL {{ forloop.counter }}"
+               oninput="updateImagePreview(this)"
+               style="width:100%;">
+        <img class="image-url-preview" src="{{ url }}"
+             style="width:100%;height:100px;object-fit:cover;border:1px solid #ddd;margin-top:4px;{% if not url %}display:none;{% endif %}"
+             onerror="this.style.display='none';" onload="this.style.display='';" alt="">
+      </div>
+      {% endfor %}
+    </div>
   </div>
 
   <div class="panel">
@@ -100,7 +122,11 @@
       <div class="panel-title">利益計算ツール</div>
       <div class="field-grid" style="grid-template-columns: repeat(2, 1fr);">
         <div><label>仕入価格</label>{{ form.cost_price }}</div>
-        <div><label>為替</label>{{ form.fx_rate }}</div>
+        <div>
+          <label>為替(USD→JPY)</label>
+          {{ form.fx_rate }}
+          <button type="button" class="btn btn-gray" style="font-size:12px;" onclick="fetchFxRate()">最新レート取得</button>
+        </div>
         <div><label>手数料(%)</label>{{ form.fee_percent }}</div>
         <div><label>送料等</label>{{ form.other_cost }}</div>
       </div>
@@ -140,10 +166,10 @@
     <div class="two-col">
       <div>
         <label>メルカリ商品URL</label>
-        <input type="url" name="mercari_url" value="{{ mercari_link.mercari_url|default:'' }}"
-               placeholder="https://jp.mercari.com/item/m...">
-        <label>メルカリSKU/管理番号</label>
-        <input type="text" name="mercari_sku" value="{{ mercari_link.mercari_sku|default:'' }}">
+        <input type="url" id="mercari_url_input" name="mercari_url" value="{{ mercari_link.mercari_url|default:'' }}"
+               placeholder="https://jp.mercari.com/item/m..." oninput="updateMercariSkuPreview()">
+        <label>メルカリSKU/管理番号 (URLの m+数字 から自動設定)</label>
+        <input type="text" id="mercari_sku_input" name="mercari_sku" value="{{ mercari_link.mercari_sku|default:'' }}" readonly>
       </div>
       <div>
         <label>
@@ -160,7 +186,56 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title">ディスクリプション</div>
+    <div class="panel-title">
+      ビジネスポリシー (Payment / Shipping / Return)
+      {% if listing.pk %}
+      <a class="btn btn-gray" style="font-size:12px;" href="?refresh_profiles=1">最新のポリシーを再取得</a>
+      {% endif %}
+    </div>
+    {% if profiles_error %}
+      <div style="color:#b00020;">{{ profiles_error }}</div>
+    {% endif %}
+    <div class="field-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div>
+        <label>Payment Policy</label>
+        <select name="payment_profile_id">
+          <option value="">(未選択)</option>
+          {% for p in payment_profiles %}
+          <option value="{{ p.id }}" {% if p.id == listing.payment_profile_id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Shipping Policy</label>
+        <select name="shipping_profile_id">
+          <option value="">(未選択)</option>
+          {% for p in shipping_profiles %}
+          <option value="{{ p.id }}" {% if p.id == listing.shipping_profile_id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Return Policy</label>
+        <select name="return_profile_id">
+          <option value="">(未選択)</option>
+          {% for p in return_profiles %}
+          <option value="{{ p.id }}" {% if p.id == listing.return_profile_id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">
+      ディスクリプション
+      {% if listing.pk %}
+      <button type="button" class="btn btn-blue" id="mercari-desc-btn" style="font-size:12px;" onclick="fetchMercariDescription()">
+        メルカリから説明文取得
+      </button>
+      <span id="mercari-desc-status" style="font-size:12px;color:#777;"></span>
+      {% endif %}
+    </div>
     <div class="two-col">
       <div>
         <label>詳細説明(日本語)</label>
@@ -194,5 +269,130 @@ function translateDescription() {
   .then(r => r.text())
   .then(t => { document.querySelector('[name=description_html]').value = t; });
 }
+
+function updateMercariSkuPreview() {
+  const url = document.getElementById('mercari_url_input').value;
+  const m = url.match(/\/item\/(m\d+)/) || url.match(/(m\d{6,15})/);
+  document.getElementById('mercari_sku_input').value = m ? m[1] : '';
+}
+
+function updateImagePreview(input) {
+  const img = input.parentElement.querySelector('.image-url-preview');
+  const url = input.value.trim();
+  if (url) {
+    img.src = url;
+    img.style.display = '';
+  } else {
+    img.removeAttribute('src');
+    img.style.display = 'none';
+  }
+}
+
+function fetchMercariImages() {
+  const urlInput = document.getElementById('mercari_url_input');
+  const mercariUrl = urlInput ? urlInput.value.trim() : '';
+  if (!mercariUrl) {
+    alert('先にメルカリURLを入力してください。');
+    return;
+  }
+  const btn = document.getElementById('mercari-image-btn');
+  const status = document.getElementById('mercari-image-status');
+  btn.disabled = true;
+  status.style.color = '#777';
+  status.textContent = '取得中...(数秒~十数秒かかります。しばらくお待ちください)';
+
+  fetch("{% url 'listings:fetch_mercari_images' listing.pk %}", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': '{{ csrf_token }}',
+    },
+    body: 'mercari_url=' + encodeURIComponent(mercariUrl),
+  })
+  .then(r => r.json().then(data => ({ ok: r.ok, data: data })))
+  .then(({ ok, data }) => {
+    btn.disabled = false;
+    if (!ok) {
+      status.style.color = '#b00020';
+      status.textContent = 'エラー: ' + (data.error || '取得に失敗しました。');
+      return;
+    }
+    const inputs = document.querySelectorAll('.image-url-input');
+    inputs.forEach((inp, i) => {
+      inp.value = data.images[i] || '';
+      updateImagePreview(inp);
+    });
+    status.style.color = '#1a7a1a';
+    status.textContent = data.images.length + '枚取得し画像欄に反映しました(保存すると確定します)';
+  })
+  .catch(err => {
+    btn.disabled = false;
+    status.style.color = '#b00020';
+    status.textContent = '通信エラー: ' + err;
+  });
+}
+
+function fetchMercariDescription() {
+  const urlInput = document.getElementById('mercari_url_input');
+  const mercariUrl = urlInput ? urlInput.value.trim() : '';
+  if (!mercariUrl) {
+    alert('先にメルカリURLを入力してください。');
+    return;
+  }
+  const btn = document.getElementById('mercari-desc-btn');
+  const status = document.getElementById('mercari-desc-status');
+  btn.disabled = true;
+  status.style.color = '#777';
+  status.textContent = '取得中...(数秒~十数秒かかります)';
+
+  fetch("{% url 'listings:fetch_mercari_description' listing.pk %}", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': '{{ csrf_token }}',
+    },
+    body: 'mercari_url=' + encodeURIComponent(mercariUrl),
+  })
+  .then(r => r.json().then(data => ({ ok: r.ok, data: data })))
+  .then(({ ok, data }) => {
+    btn.disabled = false;
+    if (!ok) {
+      status.style.color = '#b00020';
+      status.textContent = 'エラー: ' + (data.error || '取得に失敗しました。');
+      return;
+    }
+    document.querySelector('[name=description_ja]').value = data.description;
+    status.style.color = '#1a7a1a';
+    status.textContent = '説明文を取得し反映しました(保存すると確定します)';
+  })
+  .catch(err => {
+    btn.disabled = false;
+    status.style.color = '#b00020';
+    status.textContent = '通信エラー: ' + err;
+  });
+}
+
+function fetchFxRate() {
+  fetch("{% url 'listings:fx_rate' %}", {
+    method: "POST",
+    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.rate) {
+      document.querySelector('[name=fx_rate]').value = data.rate;
+    } else {
+      alert(data.error || "為替レートの取得に失敗しました。");
+    }
+  })
+  .catch(() => alert("為替レートの取得に失敗しました。"));
+}
+
+window.addEventListener('DOMContentLoaded', function () {
+  const fxInput = document.querySelector('[name=fx_rate]');
+  if (fxInput && !fxInput.value) {
+    fetchFxRate();
+  }
+});
 </script>
 {% endblock %}

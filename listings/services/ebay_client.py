@@ -48,6 +48,17 @@ class EbayListingData:
     listing_url: str = ""
     custom_label: str = ""
     listing_status: str = ""  # Active / Ended 等 eBay側の生値
+    # --- GetItem (ItemIDからの詳細取得) で使う追加項目 ---
+    description_html: str = ""
+    category_id: str = ""
+    category_name: str = ""
+    condition_id: str = ""
+    condition_description: str = ""
+    brand: str = ""
+    upc: str = ""
+    mpn: str = ""
+    item_specifics: list = field(default_factory=list)
+    image_urls: list = field(default_factory=list)
 
 
 def _strip_ns(tag: str) -> str:
@@ -79,13 +90,25 @@ def _decimal(value, default="0"):
 
 class EbayTradingClient:
     def __init__(self):
-        self.app_id = settings.EBAY_APP_ID
-        self.dev_id = settings.EBAY_DEV_ID
-        self.cert_id = settings.EBAY_CERT_ID
-        self.auth_token = settings.EBAY_AUTH_TOKEN
+        # 設定画面(core.AppSetting)で値が入力されていればそちらを優先し、
+        # 空欄なら.env側の値にフォールバックする。
+        from core.models import AppSetting  # 遅延import (循環回避)
+
+        setting = AppSetting.load()
+
+        self.app_id = setting.ebay_app_id or settings.EBAY_APP_ID
+        self.dev_id = setting.ebay_dev_id or settings.EBAY_DEV_ID
+        self.cert_id = setting.ebay_cert_id or settings.EBAY_CERT_ID
+        self.auth_token = setting.ebay_auth_token or settings.EBAY_AUTH_TOKEN
         self.site_id = settings.EBAY_SITE_ID
         self.api_version = settings.EBAY_TRADING_API_VERSION
-        self.endpoint = settings.EBAY_TRADING_API_URL
+
+        env = (setting.ebay_env or settings.EBAY_ENV).strip().lower()
+        self.endpoint = (
+            "https://api.sandbox.ebay.com/ws/api.dll"
+            if env == "sandbox"
+            else "https://api.ebay.com/ws/api.dll"
+        )
 
     # ------------------------------------------------------------------
     # 低レベル呼び出し
@@ -197,25 +220,102 @@ class EbayTradingClient:
         return results, total_pages, total_entries
 
     def get_item(self, item_id: str) -> EbayListingData:
+        """ItemIDを指定して単一出品の詳細情報を取得する (GetItem)。
+
+        出品タグの「ItemIDから取得」ボタン用。タイトル/価格に加えて、
+        説明文・カテゴリ・商品状態・Brand/UPC/MPN・Item Specifics・画像URLも取得する。
+        """
         body = f"""
   <ItemID>{item_id}</ItemID>
   <DetailLevel>ReturnAll</DetailLevel>
+  <IncludeItemSpecifics>true</IncludeItemSpecifics>
 """
         root = self._post("GetItem", body)
         item = _find(root, "Item")
+        if item is None:
+            raise EbayApiError(f"ItemID {item_id} が見つかりませんでした。")
+
         price = _decimal(_text(item, "StartPrice"))
         currency_node = _find(item, "StartPrice")
         currency_code = currency_node.attrib.get("currencyID", "USD") if currency_node is not None else "USD"
+
+        item_specifics = []
+        specifics_node = _find(item, "ItemSpecifics")
+        if specifics_node is not None:
+            for nvl in specifics_node.findall(f"{EBAY_NS}NameValueList"):
+                name = _text(nvl, "Name")
+                if not name:
+                    continue
+                values = [v.text for v in nvl.findall(f"{EBAY_NS}Value") if v.text]
+                item_specifics.append({"name": name, "value": ", ".join(values)})
+
+        def _specific(name: str) -> str:
+            for s in item_specifics:
+                if s["name"].strip().lower() == name.lower():
+                    return s["value"]
+            return ""
+
+        image_urls = []
+        pictures_node = _find(item, "PictureDetails")
+        if pictures_node is not None:
+            image_urls = [p.text for p in pictures_node.findall(f"{EBAY_NS}PictureURL") if p.text]
+
+        qty_total = int(_text(item, "Quantity", "1") or 1)
+        qty_sold = int(_text(item, "SellingStatus/QuantitySold", "0") or 0)
+
         return EbayListingData(
             item_id=_text(item, "ItemID"),
             title=_text(item, "Title"),
             sku=_text(item, "SKU"),
             currency=currency_code,
             price=price,
-            quantity=int(_text(item, "Quantity", "1") or 1),
+            quantity=qty_total,
+            quantity_available=max(qty_total - qty_sold, 0),
+            watch_count=int(_text(item, "WatchCount", "0") or 0),
             listing_url=_text(item, "ListingDetails/ViewItemURL"),
             custom_label=_text(item, "SKU"),
+            listing_status=_text(item, "SellingStatus/ListingStatus"),
+            description_html=_text(item, "Description"),
+            category_id=_text(item, "PrimaryCategory/CategoryID"),
+            category_name=_text(item, "PrimaryCategory/CategoryName"),
+            condition_id=_text(item, "ConditionID"),
+            condition_description=_text(item, "ConditionDescription") or _text(item, "ConditionDisplayName"),
+            brand=_specific("Brand"),
+            upc=_specific("UPC"),
+            mpn=_specific("MPN"),
+            item_specifics=item_specifics,
+            image_urls=image_urls,
         )
+
+    # ------------------------------------------------------------------
+    # ビジネスポリシー (Payment / Shipping / Return)
+    # ------------------------------------------------------------------
+    def get_seller_profiles(self) -> dict:
+        """アカウントに登録済みのBusiness Policies一覧を取得する (GetUserPreferences)。
+
+        戻り値: {"payment": [{"id":..,"name":..}], "shipping": [...], "return": [...]}
+        """
+        body = "<ShowSellerProfilePreferences>true</ShowSellerProfilePreferences>"
+        root = self._post("GetUserPreferences", body)
+        result: dict = {"payment": [], "shipping": [], "return": []}
+
+        prefs = _find(root, "SellerProfilePreferences/SupportedSellerProfiles")
+        if prefs is None:
+            return result
+
+        type_map = {
+            "PAYMENT": "payment",
+            "SHIPPING": "shipping",
+            "RETURN_POLICY": "return",
+        }
+        for profile in prefs.findall(f"{EBAY_NS}SupportedSellerProfile"):
+            profile_id = _text(profile, "ProfileID")
+            profile_name = _text(profile, "ProfileName")
+            profile_type = _text(profile, "ProfileType")
+            key = type_map.get(profile_type)
+            if key and profile_id:
+                result[key].append({"id": profile_id, "name": profile_name or profile_id})
+        return result
 
     # ------------------------------------------------------------------
     # 在庫・価格更新 / 出品終了 (自動取り下げで使用)
@@ -266,6 +366,26 @@ class EbayTradingClient:
             urls = "".join(f"<PictureURL>{u}</PictureURL>" for u in listing.image_urls if u)
             pictures_xml = f"<PictureDetails>{urls}</PictureDetails>"
 
+        profile_parts = []
+        if listing.payment_profile_id:
+            profile_parts.append(
+                f"<SellerPaymentProfile><PaymentProfileID>{listing.payment_profile_id}"
+                f"</PaymentProfileID></SellerPaymentProfile>"
+            )
+        if listing.shipping_profile_id:
+            profile_parts.append(
+                f"<SellerShippingProfile><ShippingProfileID>{listing.shipping_profile_id}"
+                f"</ShippingProfileID></SellerShippingProfile>"
+            )
+        if listing.return_profile_id:
+            profile_parts.append(
+                f"<SellerReturnProfile><ReturnProfileID>{listing.return_profile_id}"
+                f"</ReturnProfileID></SellerReturnProfile>"
+            )
+        seller_profiles_xml = (
+            f"<SellerProfiles>{''.join(profile_parts)}</SellerProfiles>" if profile_parts else ""
+        )
+
         return f"""
   <Item>
     {f"<ItemID>{listing.item_id}</ItemID>" if listing.item_id else ""}
@@ -282,6 +402,7 @@ class EbayTradingClient:
     <ListingType>FixedPriceItem</ListingType>
     {pictures_xml}
     {specifics_xml}
+    {seller_profiles_xml}
   </Item>
 """
 

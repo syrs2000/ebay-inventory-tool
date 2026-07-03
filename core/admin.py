@@ -1,3 +1,8 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import AppSetting
+
+
+@admin.register(AppSetting)
+class AppSettingAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "ebay_env", "updated_at")

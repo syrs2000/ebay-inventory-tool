@@ -1,0 +1,42 @@
+<div style="display:flex; gap:16px; flex-wrap:wrap;">
+  <div style="flex:0 0 220px;">
+    {% if listing.image_urls %}
+      <img src="{{ listing.image_urls.0 }}" style="max-width:220px; max-height:220px; object-fit:contain;" alt="メイン画像">
+      {% if listing.image_urls|length > 1 %}
+      <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
+        {% for img in listing.image_urls|slice:":8" %}
+          <img src="{{ img }}" style="width:40px;height:40px;object-fit:cover;border:1px solid #ddd;" alt="サムネイル">
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% else %}
+      <div style="width:220px;height:220px;background:#f2f2f2;display:flex;align-items:center;justify-content:center;color:#999;">画像なし</div>
+    {% endif %}
+  </div>
+  <div style="flex:1; min-width:260px;">
+    <h3 style="margin:0 0 8px;">{{ listing.title_en|default:listing.title_ja|default:"(タイトル未設定)" }}</h3>
+    <div style="font-size:20px;font-weight:bold;">{{ listing.currency }} {{ listing.price }}</div>
+    {% if listing.condition_description %}<div>状態: {{ listing.condition_description }}</div>{% endif %}
+    {% if listing.category_name %}<div>カテゴリ: {{ listing.category_name }}</div>{% endif %}
+    {% if listing.brand %}<div>Brand: {{ listing.brand }}</div>{% endif %}
+    {% if listing.payment_profile_name or listing.shipping_profile_name or listing.return_profile_name %}
+    <div style="margin-top:6px;font-size:13px;color:#555;">
+      {% if listing.payment_profile_name %}Payment: {{ listing.payment_profile_name }}<br>{% endif %}
+      {% if listing.shipping_profile_name %}Shipping: {{ listing.shipping_profile_name }}<br>{% endif %}
+      {% if listing.return_profile_name %}Return: {{ listing.return_profile_name }}{% endif %}
+    </div>
+    {% endif %}
+    {% if listing.item_specifics %}
+    <table class="specifics-table" style="margin-top:8px;">
+      {% for spec in listing.item_specifics %}
+      <tr><td><strong>{{ spec.name }}</strong></td><td>{{ spec.value }}</td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+  </div>
+</div>
+{% if listing.description_html %}
+<div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;">{{ listing.description_html|safe }}</div>
+{% elif listing.description_ja %}
+<div style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;white-space:pre-wrap;">{{ listing.description_ja }}</div>
+{% endif %}

@@ -37,7 +37,7 @@ class Command(BaseCommand):
                             "title_en": data.title,
                             "currency": data.currency,
                             "price": data.price,
-                            "quantity": data.quantity,
+                            "quantity": data.quantity_available,
                             "watch_count": data.watch_count,
                             "status": Listing.STATUS_ACTIVE,
                             "is_active": True,

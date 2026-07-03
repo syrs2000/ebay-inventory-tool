@@ -1,0 +1,21 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>プレビュー - {{ listing.item_id|default:"新規" }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">プレビュー: {{ listing.item_id|default:"(未出品)" }}</span>
+  </div>
+  <div class="content">
+    <div class="panel" style="border:2px solid #ccc; background:#fff;">
+      {% include "listings/_preview_content.html" %}
+    </div>
+    <div style="margin-top:8px; font-size:12px; color:#777;">
+      このウィンドウは保存済みの内容を表示しています。編集画面で保存した後、再読み込み(F5)すると最新の内容に更新されます。
+    </div>
+  </div>
+</body>
+</html>

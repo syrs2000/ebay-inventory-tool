@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}設定{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <strong>API設定</strong>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <div class="panel">
+    <div class="panel-title">eBay Trading API 認証情報</div>
+    <div style="font-size:12px;margin-bottom:6px;">
+      空欄のまま保存すると .env の値がそのまま使われます。ここに入力した値は .env より優先されます。
+    </div>
+    <div class="field-grid" style="grid-template-columns: repeat(2, 1fr);">
+      <div>
+        <label>eBay環境 (sandbox / production)</label>
+        <input type="text" name="ebay_env" value="{{ setting.ebay_env }}" placeholder="空欄で.envの値を使用">
+      </div>
+      <div>
+        <label>EBAY_APP_ID</label>
+        <input type="text" name="ebay_app_id" value="{{ setting.ebay_app_id }}" placeholder="空欄で.envの値を使用">
+      </div>
+      <div>
+        <label>EBAY_DEV_ID</label>
+        <input type="text" name="ebay_dev_id" value="{{ setting.ebay_dev_id }}" placeholder="空欄で.envの値を使用">
+      </div>
+      <div>
+        <label>EBAY_CERT_ID</label>
+        <input type="text" name="ebay_cert_id" value="{{ setting.ebay_cert_id }}" placeholder="空欄で.envの値を使用">
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <label>EBAY_AUTH_TOKEN</label>
+      <textarea name="ebay_auth_token" rows="3" style="width:100%;" placeholder="空欄で.envの値を使用">{{ setting.ebay_auth_token }}</textarea>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Gemini API (翻訳用)</div>
+    <div style="font-size:12px;margin-bottom:6px;">
+      取得済みのGemini APIキーをここに貼り付けてください。設定すると「翻訳 ⇒ 英語」ボタンがGemini経由の翻訳を使うようになります
+      (未設定/エラー時は従来のGoogle翻訳にフォールバックします)。
+    </div>
+    <label>Gemini APIキー</label>
+    <input type="text" name="gemini_api_key" value="{{ setting.gemini_api_key }}" placeholder="AIzaSy... を貼り付け">
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">ビジネスポリシー 手動登録 (eBayアカウントからの自動取得ができない場合のフォールバック)</div>
+    <div style="font-size:12px;margin-bottom:6px;">
+      通常は出品編集画面で自動取得したポリシー一覧が使えます。取得できない場合のみ、
+      ここにProfile IDと表示名を直接入力してください(それぞれ最大5件)。
+    </div>
+
+    <div class="two-col" style="grid-template-columns: repeat(3, 1fr);">
+      <div>
+        <div class="panel-title">Payment Policy</div>
+        {% for p in payment_slots %}
+        <div class="two-col" style="margin-bottom:4px;">
+          <input type="text" name="payment_id" value="{{ p.id }}" placeholder="Profile ID">
+          <input type="text" name="payment_name" value="{{ p.name }}" placeholder="表示名">
+        </div>
+        {% endfor %}
+      </div>
+      <div>
+        <div class="panel-title">Shipping Policy</div>
+        {% for p in shipping_slots %}
+        <div class="two-col" style="margin-bottom:4px;">
+          <input type="text" name="shipping_id" value="{{ p.id }}" placeholder="Profile ID">
+          <input type="text" name="shipping_name" value="{{ p.name }}" placeholder="表示名">
+        </div>
+        {% endfor %}
+      </div>
+      <div>
+        <div class="panel-title">Return Policy</div>
+        {% for p in return_slots %}
+        <div class="two-col" style="margin-bottom:4px;">
+          <input type="text" name="return_id" value="{{ p.id }}" placeholder="Profile ID">
+          <input type="text" name="return_name" value="{{ p.name }}" placeholder="表示名">
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="submit" class="btn btn-blue">保存</button>
+  </div>
+</form>
+
+{% endblock %}

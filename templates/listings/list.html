@@ -31,6 +31,12 @@
   {% csrf_token %}
 </form>
 
+<form method="post" action="{% url 'listings:fetch_by_item_id' %}" class="toolbar" style="margin-top:8px;">
+  {% csrf_token %}
+  <input type="text" name="item_id" placeholder="eBay ItemIDを入力" required>
+  <button type="submit" class="btn btn-blue">ItemIDから詳細取得</button>
+</form>
+
 <div>全 {{ total_count }} 件</div>
 
 <table class="data-table">
