@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}出品編集 - {{ listing.item_id|default:"新規" }}{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <strong>ItemID:</strong> {{ listing.item_id|default:"(未出品)" }}
+  <a class="btn btn-gray" href="{% url 'listings:list' %}">一覧へ戻る</a>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <div class="panel">
+    <div class="panel-title">タイトル</div>
+    <div class="two-col">
+      <div>
+        <label>日本語</label>
+        {{ form.title_ja }}
+      </div>
+      <div>
+        <label>英語</label>
+        {{ form.title_en }}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">画像URL (最大10枚)</div>
+    <table class="images-table">
+      <tr>
+        {% for url in image_slots %}
+        <td>
+          <input type="url" name="image_url"
+                 value="{{ url }}"
+                 placeholder="画像URL {{ forloop.counter }}">
+        </td>
+        {% endfor %}
+      </tr>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Category / 商品状態</div>
+    <div class="two-col">
+      <div>
+        <label>Category Name</label>
+        {{ form.category_name }}
+        <label>CategoryID</label>
+        {{ form.category_id }}
+      </div>
+      <div>
+        <label>ConditionID</label>
+        {{ form.condition_id }}
+        <label>状態説明</label>
+        {{ form.condition_description }}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Brand / UPC / MPN</div>
+    <div class="field-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div><label>Brand</label>{{ form.brand }}</div>
+      <div><label>UPC</label>{{ form.upc }}</div>
+      <div><label>MPN</label>{{ form.mpn }}</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Item Specifics</div>
+    <table class="specifics-table" id="specifics-table">
+      <tr><th>Name</th><th>Value</th></tr>
+      {% for spec in listing.item_specifics %}
+      <tr>
+        <td><input type="text" name="specific_name" value="{{ spec.name }}"></td>
+        <td><input type="text" name="specific_value" value="{{ spec.value }}"></td>
+      </tr>
+      {% endfor %}
+      {% for i in "12345" %}
+      <tr>
+        <td><input type="text" name="specific_name" value=""></td>
+        <td><input type="text" name="specific_value" value=""></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-title">価格 / Best Offer / 数量</div>
+      <div class="field-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div><label>価格</label>{{ form.price }}</div>
+        <div><label>通貨</label>{{ form.currency }}</div>
+        <div><label>Best Offer</label>{{ form.best_offer }}</div>
+        <div><label>Quantity</label>{{ form.quantity }}</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">利益計算ツール</div>
+      <div class="field-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div><label>仕入価格</label>{{ form.cost_price }}</div>
+        <div><label>為替</label>{{ form.fx_rate }}</div>
+        <div><label>手数料(%)</label>{{ form.fee_percent }}</div>
+        <div><label>送料等</label>{{ form.other_cost }}</div>
+      </div>
+      {% if listing.profit_estimate is not None %}
+        <div>概算利益: {{ listing.profit_estimate }} 円</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">カスタムラベル / SKU</div>
+    <div class="field-grid" style="grid-template-columns: repeat(2, 1fr);">
+      <div><label>カスタムラベル(SKU登録名)</label>{{ form.custom_label }}</div>
+      <div><label>SKU</label>{{ form.sku }}</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">追加登録データ (追加SKU / 仕入元)</div>
+    <div class="field-grid">
+      {% for sku in sku_slots %}
+      <div>
+        <label>追加SKU{{ forloop.counter }}</label>
+        <input type="text" name="additional_sku" value="{{ sku }}">
+      </div>
+      {% endfor %}
+    </div>
+    <div class="two-col" style="margin-top:8px;">
+      <div><label>仕入元ページURL</label>{{ form.supply_url }}</div>
+      <div><label>price上限</label>{{ form.supply_price_cap }}</div>
+    </div>
+    <label>メモ</label>{{ form.supply_memo }}
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">メルカリ紐づけ (在庫連動・自動取り下げ)</div>
+    <div class="two-col">
+      <div>
+        <label>メルカリ商品URL</label>
+        <input type="url" name="mercari_url" value="{{ mercari_link.mercari_url|default:'' }}"
+               placeholder="https://jp.mercari.com/item/m...">
+        <label>メルカリSKU/管理番号</label>
+        <input type="text" name="mercari_sku" value="{{ mercari_link.mercari_sku|default:'' }}">
+      </div>
+      <div>
+        <label>
+          <input type="checkbox" name="auto_delist_enabled"
+                 {% if mercari_link.auto_delist_enabled|default:True %}checked{% endif %}>
+          売り切れ検知時に自動でeBay出品を取り下げる
+        </label>
+        {% if mercari_link %}
+          <div>在庫状況: {{ mercari_link.last_stock_status }}
+            (最終確認: {{ mercari_link.last_checked_at|default:"未確認" }})</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">ディスクリプション</div>
+    <div class="two-col">
+      <div>
+        <label>詳細説明(日本語)</label>
+        {{ form.description_ja }}
+        <button type="button" class="btn btn-green" onclick="translateDescription()">翻訳 ⇒ 英語</button>
+      </div>
+      <div>
+        <label>HTML(英語)</label>
+        {{ form.description_html }}
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="submit" name="save" class="btn btn-gray">保存</button>
+    <button type="submit" name="save_and_push" class="btn btn-blue">保存して出品/更新</button>
+  </div>
+</form>
+
+<script>
+function translateDescription() {
+  const ja = document.querySelector('[name=description_ja]').value;
+  fetch("{% url 'listings:translate' %}", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-CSRFToken": "{{ csrf_token }}",
+    },
+    body: "text=" + encodeURIComponent(ja),
+  })
+  .then(r => r.text())
+  .then(t => { document.querySelector('[name=description_html]').value = t; });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}eBay 出品・在庫管理ツール{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">EBAY 出品・在庫管理ツール</span>
+    <nav>
+      <a href="{% url 'listings:list' %}">出品一覧</a>
+      <a href="{% url 'listings:create' %}">新規出品</a>
+      <a href="{% url 'mercari_link:list' %}">メルカリ紐づけ</a>
+      <a href="/admin/">管理画面</a>
+    </nav>
+  </div>
+
+  {% if messages %}
+  <ul class="messages">
+    {% for message in messages %}
+      <li class="msg-{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <div class="content">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

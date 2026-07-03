@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}メルカリ紐づけ CSV一括登録{% endblock %}
+{% block content %}
+<h3>メルカリ紐づけ CSV一括登録</h3>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit" class="btn btn-blue">取込実行</button>
+  <a class="btn btn-gray" href="{% url 'mercari_link:list' %}">戻る</a>
+</form>
+
+<p>列見出し: <code>ItemID, SKU, mercari_url, mercari_sku, auto_delist_enabled</code></p>
+<ul>
+  <li>ItemID優先、無ければSKUで出品と照合します。</li>
+  <li>mercari_url が空欄の行はスキップされます。</li>
+  <li>auto_delist_enabled は 1/0 (または 有効/空欄) で指定してください。省略時は有効(1)扱いです。</li>
+  <li>「CSV出力」で現在の紐づけ状況と未紐づけの出品一覧をひな形として出力できます。まずそれをダウンロードして編集するのがおすすめです。</li>
+</ul>
+{% endblock %}

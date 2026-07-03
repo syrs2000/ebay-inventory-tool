@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}CSV取込{% endblock %}
+{% block content %}
+<h3>CSV取込</h3>
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit" class="btn btn-blue">取込実行</button>
+  <a class="btn btn-gray" href="{% url 'listings:list' %}">戻る</a>
+</form>
+<p>列見出し: ItemID, URL, 結果, ステータス, ルート, title, SKU, 通貨, 販売価格, 送料, watch, quantity</p>
+{% endblock %}

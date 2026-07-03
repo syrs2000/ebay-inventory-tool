@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}メルカリ紐づけ・在庫監視{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <form method="post" action="{% url 'mercari_link:check_now' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-blue">今すぐ在庫確認 (手動実行)</button>
+  </form>
+  <a class="btn btn-green" href="{% url 'mercari_link:export_csv' %}">CSV出力</a>
+  <a class="btn btn-gray" href="{% url 'mercari_link:import_csv' %}">CSV一括登録</a>
+</div>
+
+<h3>紐づけ一覧</h3>
+<table class="data-table">
+  <thead>
+    <tr><th>eBay ItemID</th><th>SKU</th><th>メルカリURL</th><th>在庫状況</th><th>最終確認</th><th>自動取り下げ</th></tr>
+  </thead>
+  <tbody>
+    {% for link in links %}
+    <tr>
+      <td><a href="{% url 'listings:detail' link.listing.pk %}">{{ link.listing.item_id }}</a></td>
+      <td>{{ link.listing.sku }}</td>
+      <td><a href="{{ link.mercari_url }}" target="_blank" rel="noopener">{{ link.mercari_url|truncatechars:40 }}</a></td>
+      <td>{{ link.last_stock_status }}</td>
+      <td>{{ link.last_checked_at|default:"未確認" }}</td>
+      <td>{{ link.auto_delist_enabled|yesno:"有効,無効" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6">メルカリ紐づけがまだありません。出品編集画面、またはCSV一括登録から登録してください。</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>在庫確認ログ</h3>
+<table class="data-table">
+  <thead>
+    <tr><th>日時</th><th>ItemID</th><th>結果</th><th>実施アクション</th></tr>
+  </thead>
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.checked_at }}</td>
+      <td>{{ log.mercari_link.listing.item_id }}</td>
+      <td>{{ log.status }}</td>
+      <td>{{ log.action_taken }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">ログはまだありません。</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

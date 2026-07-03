@@ -1,0 +1,90 @@
+* { box-sizing: border-box; }
+body {
+  font-family: "Meiryo", "Yu Gothic", sans-serif;
+  margin: 0;
+  background: #f2f2f7;
+  color: #222;
+  font-size: 13px;
+}
+.topbar {
+  background: #3b3b70;
+  color: white;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.topbar .brand { font-weight: bold; }
+.topbar nav a { color: #fff; margin-right: 12px; text-decoration: none; }
+.topbar nav a:hover { text-decoration: underline; }
+
+.content { padding: 16px; }
+
+.messages { list-style: none; padding: 0; margin: 0 0 10px 0; }
+.messages li { padding: 8px 12px; margin-bottom: 4px; border-radius: 3px; }
+.msg-success { background: #d4edda; color: #155724; }
+.msg-error { background: #f8d7da; color: #721c24; }
+
+/* --- toolbar buttons (screenshot1 style) --- */
+.toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.btn {
+  border: 1px solid #999;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: bold;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-blue { background: #3b6fd1; color: #fff; }
+.btn-green { background: #3a8f3a; color: #fff; }
+.btn-yellow { background: #e8e08a; color: #333; border-color: #c9c04a; }
+.btn-gray { background: #e0e0e0; color: #333; }
+.btn-pink { background: #f3a6c1; color: #333; }
+.btn-purple { background: #c98ad1; color: #333; }
+.btn-orange { background: #e08a2b; color: #fff; }
+
+.range-inputs { display: flex; gap: 4px; align-items: center; }
+.range-inputs input { width: 60px; }
+
+/* --- data table --- */
+table.data-table {
+  border-collapse: collapse;
+  width: 100%;
+  background: #fff;
+}
+table.data-table th {
+  background: #cfe7e0;
+  border: 1px solid #a9c9c0;
+  padding: 4px 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+table.data-table td {
+  border: 1px solid #d5e6e1;
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+table.data-table tbody tr:hover { background: #eef8f5; }
+.status-確認不可 { color: #b02a2a; font-weight: bold; }
+.status-販売中 { color: #1a7a1a; font-weight: bold; }
+.status-売り切れ { color: #999; font-weight: bold; }
+
+/* --- edit form (screenshot3 orange panels) --- */
+.panel { background: #f2a340; padding: 10px; margin-bottom: 8px; border-radius: 2px; }
+.panel-title { font-weight: bold; margin-bottom: 6px; }
+.panel input[type=text], .panel input[type=number], .panel input[type=url], .panel select, .panel textarea {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #b06a10;
+  border-radius: 2px;
+}
+.field-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.field-grid label { display: block; font-size: 11px; margin-bottom: 2px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.specifics-table, .images-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.specifics-table th, .specifics-table td, .images-table th, .images-table td {
+  border: 1px solid #b06a10; padding: 4px; background: #fff;
+}
+.actions { margin-top: 12px; }
+.actions .btn { margin-right: 8px; }
